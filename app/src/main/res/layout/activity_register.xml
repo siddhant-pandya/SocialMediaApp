@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp"
+    tools:context=".RegisterActivity">
+
+    <!--Text view: Label register -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:text="Register"
+        android:textColor="#000"
+        android:textSize="25sp"
+        />
+    
+    <!--Edit text: Input Email-->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:id="@+id/emailTIL" >
+        <EditText
+            android:id="@+id/emailEt"
+            android:inputType="textEmailAddress"
+            android:hint="Email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <!--Edit text: Input Password-->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:id="@+id/passwordTIL"
+        app:passwordToggleEnabled="true"
+        android:layout_below="@+id/emailTIL">
+        <EditText
+            android:id="@+id/passwordEt"
+            android:inputType="textPassword"
+            android:hint="Password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <!--Button: Register user-->
+    <Button
+        android:text="Register"
+        android:id="@+id/registerBtn"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_below="@+id/passwordTIL"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <!-- Click to register activity-->
+    <TextView
+        android:id="@+id/have_accountTv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Already have account? Login"
+        android:textAlignment="center"
+        android:layout_below="@+id/registerBtn"
+        android:layout_marginTop="30dp"
+        android:textColor="#000"/>
+
+</RelativeLayout>
