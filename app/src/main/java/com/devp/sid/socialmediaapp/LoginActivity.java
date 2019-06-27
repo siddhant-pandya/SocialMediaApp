@@ -279,12 +279,15 @@ public class LoginActivity extends AppCompatActivity {
                                 //when user registered store it in firebase database too
                                 //using hashmap
                                 HashMap<Object, String> hashMap= new HashMap<>();
+
                                 //put info in hashmap
                                 hashMap.put("email",email);
                                 hashMap.put("uid",uid);
                                 hashMap.put("name","");     //will add later
                                 hashMap.put("phone","");    //will add later
                                 hashMap.put("image","");    //will add later
+                                hashMap.put("cover","");    //will add later
+
                                 //firebase database instance
                                 FirebaseDatabase database= FirebaseDatabase.getInstance();
                                 //path to store user data named "Users"

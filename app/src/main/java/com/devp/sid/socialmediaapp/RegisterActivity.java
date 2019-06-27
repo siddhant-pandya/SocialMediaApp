@@ -114,15 +114,19 @@ public class RegisterActivity extends AppCompatActivity {
                             //get user email and uid from auth
                             String email= user.getEmail();
                             String uid= user.getUid();
+
                             //when user registered store it in firebase database too
                             //using hashmap
                             HashMap<Object, String> hashMap= new HashMap<>();
+
                             //put info in hashmap
                             hashMap.put("email",email);
                             hashMap.put("uid",uid);
                             hashMap.put("name","");     //will add later
                             hashMap.put("phone","");    //will add later
                             hashMap.put("image","");    //will add later
+                            hashMap.put("cover","");    //will add later
+
                             //firebase database instance
                             FirebaseDatabase database= FirebaseDatabase.getInstance();
                             //path to store user data named "Users"
@@ -133,7 +137,8 @@ public class RegisterActivity extends AppCompatActivity {
                             Toast.makeText(RegisterActivity.this,"Registered...\n"+user.getEmail(),Toast.LENGTH_SHORT).show();
                             startActivity(new Intent(RegisterActivity.this, DashboardActivity.class));
                             finish();
-                        } else {
+                        }
+                        else {
                             // If sign in fails, display a message to the user.
                             progressDialog.dismiss();
                             Toast.makeText(RegisterActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
