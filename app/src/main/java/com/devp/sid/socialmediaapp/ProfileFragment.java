@@ -18,13 +18,19 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import android.provider.MediaStore;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -35,9 +41,14 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
+import java.security.Key;
+import java.util.HashMap;
+
 import static android.app.Activity.RESULT_OK;
+import static com.google.firebase.storage.FirebaseStorage.getInstance;
 
 
 /**
@@ -50,8 +61,11 @@ public class ProfileFragment extends Fragment {
     FirebaseUser user;
     FirebaseDatabase firebaseDatabase;
     DatabaseReference databaseReference;
+
     //storage
     StorageReference storageReference;
+    //path where images of profile and cover will be stored
+    String storagePath= "User_Profile_Cover_Imgs/";
 
     //views
     ImageView avtarIv;
@@ -97,6 +111,7 @@ public class ProfileFragment extends Fragment {
         user= firebaseAuth.getCurrentUser();
         firebaseDatabase = FirebaseDatabase.getInstance();
         databaseReference=firebaseDatabase.getReference("Users");
+        storageReference= getInstance().getReference();     //firebase storage reference
 
         //init arrays of permission
         cameraPermission = new String[]{Manifest.permission.CAMERA,Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -175,7 +190,7 @@ public class ProfileFragment extends Fragment {
     }
     private void requestStoragePermission(){
         //request runtime storage permission
-        ActivityCompat.requestPermissions(getActivity(),storagePermission, STORAGE_REQUEST_CODE);
+        requestPermissions(storagePermission, STORAGE_REQUEST_CODE);
     }
 
     private boolean checkCameraPermission(){
@@ -188,7 +203,7 @@ public class ProfileFragment extends Fragment {
     }
     private void requestCameraPermission(){
         //request runtime storage permission
-        ActivityCompat.requestPermissions(getActivity(),cameraPermission, CAMERA_REQUEST_CODE);
+        requestPermissions(cameraPermission, CAMERA_REQUEST_CODE);
     }
 
 
@@ -227,16 +242,83 @@ public class ProfileFragment extends Fragment {
                 else if (which == 2) {
                     //Edit Name
                     pd.setMessage("Updating Name");
+                    showNamePhoneUpdateDialog("name");
                 }
                 else if (which == 3) {
                     //Edit Phone
                     pd.setMessage("Updating Phone");
+                    showNamePhoneUpdateDialog("phone");
                 }
             }
         });
 
         //create and show dialog
         builder.create().show();
+    }
+
+    private void showNamePhoneUpdateDialog(final String key) {
+        //parameter key contains "name"/"phone"
+        //as per users wish to update
+
+        //custom dialog
+        AlertDialog.Builder builder= new AlertDialog.Builder(getActivity());
+        builder.setTitle("Update "+key);       //Update name or Update phone
+        //set layout of dialog box
+        LinearLayout linearLayout = new LinearLayout(getActivity());
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        linearLayout.setPadding(10,10,10,10);
+        //add edit text
+        final EditText editText = new EditText(getActivity());
+        editText.setHint("Enter "+key);     //Hint: Enter name or Enter phone
+        linearLayout.addView(editText);
+
+        builder.setView(linearLayout);
+
+        //add buttons in dialog
+        builder.setPositiveButton("Update "+key, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //input text from edit text
+                String value= editText.getText().toString().trim();
+                //validate something is written or not
+                if(!TextUtils.isEmpty(value)){
+                    pd.show();
+                    HashMap<String,Object> result= new HashMap<>();
+                    result.put(key,value);
+
+                    databaseReference.child(user.getUid()).updateChildren(result)
+                            .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    //updated, dismiss progress
+                                    pd.dismiss();
+                                    Toast.makeText(getActivity(), "Updated...", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception e) {
+                                    //failed, dismiss progress, error handling
+                                    pd.dismiss();
+                                    Toast.makeText(getActivity(), ""+e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                }
+                else {
+                    Toast.makeText(getActivity(), "Please Enter "+key, Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+
+        //create and show dialog
+        builder.create().show();
+
     }
 
     private void showImagePicDialog() {
@@ -298,6 +380,7 @@ public class ProfileFragment extends Fragment {
                     }
                 }
             }
+            break;
             case STORAGE_REQUEST_CODE:{
                 //picking from gallery, first check if storage permission allowed or not
                 if(grantResults.length >0){
@@ -312,9 +395,8 @@ public class ProfileFragment extends Fragment {
                     }
                 }
             }
+            break;
         }
-
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
     @Override
@@ -336,7 +418,71 @@ public class ProfileFragment extends Fragment {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void uploadProfileCoverPhoto(Uri image_uri) {
+    private void uploadProfileCoverPhoto(final Uri uri) {
+        //show progress
+        pd.show();
+        //same function for both profile pic and cover photo
+
+        //path and name of image to be stored in firebase storage
+        //e.g. User_Profile_Cover_Imgs/image_e12f345e42.jpg
+        //e.g. User_Profile_Cover_Imgs/cover_q22s3233t1.jpg
+        String filePathAndName = storagePath + ""+ profileOrCoverPhoto+"_"+user.getUid();
+
+        StorageReference storageReference2nd= storageReference.child(filePathAndName);
+        storageReference2nd.putFile(uri)
+                .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                        //image is uploaded to storage, now get its url and store in user's db
+                        Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
+                        while (!uriTask.isSuccessful());
+                        Uri downloadUri = uriTask.getResult();
+
+                        //check if image is uploaded or not and url is recieved
+                        if(uriTask.isSuccessful()){
+                            //image uploaded
+                            //add/update url in user's database
+                            HashMap<String ,Object> results = new HashMap<>();
+                            //first parameter has value "image" or "cover"
+                            //second parameter contains the url of image stored in firebase db
+                            results.put(profileOrCoverPhoto,downloadUri.toString());
+
+                            databaseReference.child(user.getUid()).updateChildren(results)
+                                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void aVoid) {
+                                            //url in db is added successfully
+                                            //dismiss progress bar
+                                            pd.dismiss();
+                                            Toast.makeText(getActivity(), "Image Updated...", Toast.LENGTH_SHORT).show();
+                                        }
+                                    })
+                                    .addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            //error adding url
+                                            //dismiss progress bar
+                                            pd.dismiss();
+                                            Toast.makeText(getActivity(), "Error Updating...", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+
+                        }
+                        else {
+                            //error
+                            pd.dismiss();
+                            Toast.makeText(getActivity(), "Some error occured", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        //there were some error, get and show error message, dismiss progress dialog box
+                        pd.dismiss();
+                        Toast.makeText(getActivity(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
 
     }
 
